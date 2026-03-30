@@ -17,6 +17,6 @@ Actions:
   - config/trino-catalog-omop.properties, config/postgres-init.sh, docker/trino/catalog/omop.properties
   - docker-compose.yml, Dockerfile, main.py, requirements.txt, README.md
   - .claude/settings.json and commands/ (start-session, end-session, checkpoint)
-  - Initial git commit: (run `git init` and commit if not yet created)
+  - Initial git commit: 464b2d6
 Status: COMPLETE
 Next Session: Pick F001 — Verify Docker Compose stack and document Trino `SHOW TABLES FROM omop.public`
