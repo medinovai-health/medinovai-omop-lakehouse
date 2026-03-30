@@ -1,0 +1,22 @@
+=== MedinovAI Harness 2.0 — Progress Log ===
+Repo: medinovai-omop-lakehouse
+Tier: 2
+Initialized: 2026-03-30
+Total Features: 45
+Features Completed: 0
+Features Remaining: 45
+
+--- SESSION 0 (Initializer) ---
+Date: 2026-03-30T00:00:00Z
+Model: scaffold
+Actions:
+  - CLAUDE.md written (Harness §9 template, Tier 2)
+  - init.sh written (Docker Compose: PostgreSQL 15 + Trino + API)
+  - feature_list.json written (45 features)
+  - schema/omop_cdm_v54_core.sql from platform brain
+  - config/trino-catalog-omop.properties, config/postgres-init.sh, docker/trino/catalog/omop.properties
+  - docker-compose.yml, Dockerfile, main.py, requirements.txt, README.md
+  - .claude/settings.json and commands/ (start-session, end-session, checkpoint)
+  - Initial git commit: (run `git init` and commit if not yet created)
+Status: COMPLETE
+Next Session: Pick F001 — Verify Docker Compose stack and document Trino `SHOW TABLES FROM omop.public`

@@ -1,0 +1,595 @@
+{
+  "repo": "medinovai-omop-lakehouse",
+  "tier": 2,
+  "generated": "2026-03-30T00:00:00Z",
+  "last_updated": "2026-03-30T00:00:00Z",
+  "total": 45,
+  "completed": 0,
+  "features": [
+    {
+      "id": "F001",
+      "category": "functional",
+      "priority": "P1",
+      "description": "Docker Compose starts PostgreSQL 15 with healthy status and OMOP schema loaded from init scripts",
+      "steps": [
+        "Run docker compose up -d postgres",
+        "Wait for postgres healthcheck to pass",
+        "Connect with psql and list tables including person and concept",
+        "Confirm row counts are zero or expected seed only"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F002",
+      "category": "functional",
+      "priority": "P1",
+      "description": "Trino coordinator starts and registers the omop PostgreSQL catalog",
+      "steps": [
+        "Start full stack with docker compose up -d",
+        "Call Trino /v1/info and assert node state active",
+        "Run SHOW CATALOGS and assert omop catalog appears",
+        "Run SHOW SCHEMAS FROM omop and assert public schema"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F003",
+      "category": "functional",
+      "priority": "P1",
+      "description": "FastAPI service exposes GET /health returning 200 and service metadata",
+      "steps": [
+        "Start api service",
+        "curl http://localhost:28000/health",
+        "Assert JSON contains status healthy and service name",
+        "Assert no PHI-like keys in response body"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F004",
+      "category": "functional",
+      "priority": "P1",
+      "description": "FastAPI GET /ready returns 200 with readiness payload",
+      "steps": [
+        "curl http://localhost:28000/ready",
+        "Assert status ready in JSON",
+        "Repeat under load with 10 parallel requests",
+        "Assert all return 200"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F005",
+      "category": "functional",
+      "priority": "P2",
+      "description": "OMOP person table exists with CDM v5.4 columns and primary key on person_id",
+      "steps": [
+        "Describe person via psql \\d person",
+        "Assert gender_concept_id and year_of_birth NOT NULL",
+        "Insert minimal valid row and rollback or delete in test",
+        "Verify foreign key behavior documented for downstream ETL"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F006",
+      "category": "functional",
+      "priority": "P2",
+      "description": "visit_occurrence references person and supports visit window columns",
+      "steps": [
+        "Verify visit_occurrence FK to person",
+        "Assert visit_start_date and visit_end_date NOT NULL",
+        "Query via Trino SELECT COUNT(*) FROM omop.public.visit_occurrence",
+        "Document visit_type_concept_id usage for ETL mappers"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F007",
+      "category": "functional",
+      "priority": "P2",
+      "description": "condition_occurrence models diagnoses with condition_concept_id indexing",
+      "steps": [
+        "Confirm idx_condition_person and idx_condition_concept exist",
+        "Run EXPLAIN on filter by person_id in PostgreSQL",
+        "Run same predicate through Trino and compare plans",
+        "Record expected cardinality guidance for benchmarks"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F008",
+      "category": "functional",
+      "priority": "P2",
+      "description": "drug_exposure supports medication eras core fields and numeric quantity",
+      "steps": [
+        "Validate drug_exposure column types match CDM spec",
+        "Test insert with quantity and days_supply",
+        "Query aggregate exposure days per person in Trino",
+        "Validate index usage on drug_concept_id"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F009",
+      "category": "functional",
+      "priority": "P2",
+      "description": "procedure_occurrence captures procedures with dates and visit linkage",
+      "steps": [
+        "Check procedure_date NOT NULL constraint",
+        "Link sample row to visit_occurrence_id when present",
+        "Run Trino join person to procedure_occurrence",
+        "Assert procedure_type_concept_id documented"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F010",
+      "category": "functional",
+      "priority": "P2",
+      "description": "measurement table supports lab results value_as_number and range bounds",
+      "steps": [
+        "Insert measurement with value_as_number and range_low or range_high",
+        "Query measurements by measurement_concept_id",
+        "Verify idx_measurement_concept used in plan",
+        "Export sample as JSON-safe (no PHI in fixtures)"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F011",
+      "category": "functional",
+      "priority": "P2",
+      "description": "observation table supports qualitative and quantitative facts",
+      "steps": [
+        "Test value_as_string length boundary from CDM",
+        "Join observation to visit when visit_occurrence_id set",
+        "Run Trino filter on observation_type_concept_id",
+        "Document observation_event_id optional usage"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F012",
+      "category": "functional",
+      "priority": "P2",
+      "description": "concept vocabulary table loads and indexes support Athena-style lookups",
+      "steps": [
+        "Bulk load vocabulary subset or use seed script",
+        "Query by concept_code and vocabulary_id using idx_concept_code",
+        "Measure query latency under 10k concepts",
+        "Validate standard_concept flag semantics documented"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F013",
+      "category": "functional",
+      "priority": "P2",
+      "description": "concept_relationship enforces composite primary key and relationship_id",
+      "steps": [
+        "Insert valid concept_id_1 concept_id_2 relationship_id tuple",
+        "Attempt duplicate insert and expect failure",
+        "Trino query relationships for a concept set",
+        "Document valid_end_date filtering for active edges"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F014",
+      "category": "functional",
+      "priority": "P2",
+      "description": "concept_ancestor supports hierarchy rollups for analytics",
+      "steps": [
+        "Insert ancestor and descendant with min and max levels",
+        "Run self-join query for descendants of root concept",
+        "Compare performance with unrolled paths for one benchmark query",
+        "Document OHDSI hierarchy expectations"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F015",
+      "category": "performance",
+      "priority": "P2",
+      "description": "PostgreSQL indexes on person_id for fact tables match expected ETL query patterns",
+      "steps": [
+        "List all idx_* on fact tables from schema file",
+        "Run pg_stat_user_indexes after synthetic load",
+        "Identify unused indexes and document rationale to keep",
+        "Adjust only with migration and benchmark proof"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F016",
+      "category": "performance",
+      "priority": "P2",
+      "description": "Trino pushdown to PostgreSQL works for filtered scans on person_id",
+      "steps": [
+        "Enable EXPLAIN ANALYZE equivalent in Trino for omop catalog",
+        "Run SELECT with WHERE person_id = ?",
+        "Confirm connector pushdown in plan",
+        "Log fetch-size effect on duration"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F017",
+      "category": "performance",
+      "priority": "P3",
+      "description": "Query optimization playbook documents join order for person-centric cohort extracts",
+      "steps": [
+        "Write docs section with recommended join order",
+        "Add example Trino SQL for cohort slice",
+        "Run benchmark on 1M synthetic rows when generator exists",
+        "Store results in non-PHI metrics file"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F018",
+      "category": "functional",
+      "priority": "P2",
+      "description": "config/postgres-init.sh applies schema idempotently on empty database",
+      "steps": [
+        "Create fresh database volume",
+        "Run postgres-init.sh with env vars",
+        "Re-run script and assert IF NOT EXISTS behavior causes no failure",
+        "Document when to use init script vs docker-entrypoint-initdb.d"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F019",
+      "category": "functional",
+      "priority": "P2",
+      "description": "Schema migrations folder exists with versioned SQL or Flyway/Alembic strategy",
+      "steps": [
+        "Add migrations/ with 001_initial_omop.sql pointer or tool config",
+        "Run migration against empty DB and verify checksum",
+        "Run migration against already-initialized DB (no-op or skip)",
+        "Document rollback policy"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F020",
+      "category": "security",
+      "priority": "P1",
+      "description": "Production Trino catalog uses secrets manager for JDBC password not repo literals",
+      "steps": [
+        "Replace docker dev catalog pattern with mounted secret in K8s spec",
+        "Verify config/trino-catalog-omop.properties documents env placeholders only",
+        "Scan repo for hardcoded passwords with automated secret scan",
+        "Document rotation procedure"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F021",
+      "category": "security",
+      "priority": "P1",
+      "description": "PostgreSQL authentication restricted to application roles with least privilege",
+      "steps": [
+        "Define omop_rw and omop_ro roles in migration",
+        "Grant SELECT only to Trino user if read-only federation required",
+        "Block superuser from application connections in prod checklist",
+        "Test connection denial for wrong role"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F022",
+      "category": "compliance",
+      "priority": "P2",
+      "description": "Audit log hook design documents who queried OMOP via Trino with tenant id",
+      "steps": [
+        "Draft AUDIT_TRAIL.md section for query events",
+        "Map fields to platform audit event schema",
+        "Ensure no raw PHI in log payload examples",
+        "Review with security stakeholder"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F023",
+      "category": "functional",
+      "priority": "P2",
+      "description": "Multi-tenant schema strategy documented omop_{tenant} vs row-level security",
+      "steps": [
+        "Write ADR comparing schema-per-tenant vs RLS",
+        "Prototype search_path or catalog per tenant for Trino",
+        "List migration impact for each option",
+        "Record MedinovAI platform decision"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F024",
+      "category": "functional",
+      "priority": "P2",
+      "description": "init.sh completes with INIT_SUCCESS when all three services are healthy",
+      "steps": [
+        "Run bash init.sh from clean machine with Docker",
+        "Capture INIT_SUCCESS line",
+        "Stop stack and rerun idempotently",
+        "Fail fast with INIT_FAILED when port conflict occurs"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F025",
+      "category": "performance",
+      "priority": "P3",
+      "description": "PostgreSQL autovacuum and analyze settings tuned for bulk OMOP loads",
+      "steps": [
+        "Document recommended postgresql.conf for load phase",
+        "Run COPY-based load test and measure bloat",
+        "Adjust autovacuum_vacuum_scale_factor if needed",
+        "Commit tuning guide to README or docs/"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F026",
+      "category": "functional",
+      "priority": "P2",
+      "description": "Trino memory and spill settings documented for large joins across fact tables",
+      "steps": [
+        "Add config/jvm.config or coordinator notes for dev",
+        "Run join query exceeding default memory with controlled data",
+        "Enable spill to disk if supported and measure",
+        "Document production values separately"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F027",
+      "category": "functional",
+      "priority": "P2",
+      "description": "Standardized vocabulary load pipeline from OHDSI Athena (non-PHI) scripted",
+      "steps": [
+        "Script download checksum verify for vocabulary CSVs",
+        "Load concept and concept_synonym when added to schema",
+        "Validate row counts against release notes",
+        "Store script under scripts/ with usage in README"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F028",
+      "category": "functional",
+      "priority": "P3",
+      "description": "CDM source metadata tables added if integration platform requires provenance",
+      "steps": [
+        "Compare core-only schema to full CDM for _metadata tables",
+        "Add migration for cdm_source when approved",
+        "Wire ETL to populate source name and version",
+        "Query provenance from Trino"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F029",
+      "category": "functional",
+      "priority": "P2",
+      "description": "death table or linkage to person end-of-life modeled per CDM extension policy",
+      "steps": [
+        "Review OHDSI death table requirement for deployment",
+        "Add migration if clinical use case approved",
+        "Restrict access at API layer",
+        "Document ethics and compliance review gate"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F030",
+      "category": "functional",
+      "priority": "P2",
+      "description": "visit_detail table added when ambulatory detail granularity is required",
+      "steps": [
+        "Add visit_detail DDL migration referencing visit_occurrence",
+        "Update Trino queries that assumed visit only",
+        "Index visit_detail for person and visit keys",
+        "Validate ETL mapping from FHIR Encounters"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F031",
+      "category": "security",
+      "priority": "P1",
+      "description": "TLS termination documented for Trino and PostgreSQL outside Docker Desktop",
+      "steps": [
+        "List required certs for Trino HTTPS",
+        "Document Postgres sslmode for JDBC",
+        "Add example ingress annotations for K8s",
+        "Verify health probes still work with TLS"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F032",
+      "category": "functional",
+      "priority": "P2",
+      "description": "Backup and restore runbook for omop_pg_data volume and logical dumps",
+      "steps": [
+        "Document pg_dump command with schedule",
+        "Test restore to fresh volume",
+        "Align with ~/medinovai-backups policy",
+        "Record RPO and RTO targets"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F033",
+      "category": "performance",
+      "priority": "P3",
+      "description": "Partitioning strategy evaluated for largest fact tables by event date",
+      "steps": [
+        "Identify candidate tables for native partitioning",
+        "Prototype monthly partitions on measurement_date",
+        "Measure prune effectiveness in PostgreSQL",
+        "Summarize Trino partition awareness"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F034",
+      "category": "functional",
+      "priority": "P2",
+      "description": "Integration test asserts Trino can read person count matching PostgreSQL",
+      "steps": [
+        "Add pytest that runs against docker-compose URLs",
+        "Compare counts from psql and Trino",
+        "Skip gracefully when docker unavailable in CI",
+        "Mark feature passes when green in pipeline"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F035",
+      "category": "compliance",
+      "priority": "P2",
+      "description": "Data classification tags applied to repos env vars and connection strings",
+      "steps": [
+        "Label OMOP_DB_* as confidential in docs",
+        "Ensure .env.example has no real secrets",
+        "Run grep for password= in tracked files",
+        "Fix any violations"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F036",
+      "category": "functional",
+      "priority": "P2",
+      "description": "GET /ready checks PostgreSQL connectivity with lightweight SELECT 1",
+      "steps": [
+        "Add asyncpg or SQLAlchemy dependency",
+        "Implement pool with timeout",
+        "Return 503 when DB unreachable",
+        "Keep logs phi_safe with no connection string logging"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F037",
+      "category": "functional",
+      "priority": "P3",
+      "description": "GET /ready optionally checks Trino coordinator /v1/info",
+      "steps": [
+        "Add httpx or aiohttp client",
+        "Call internal trino URL from api container",
+        "Degrade gracefully if Trino optional in some profiles",
+        "Unit test with mocked responses"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F038",
+      "category": "ux",
+      "priority": "P3",
+      "description": "README quickstart enables new developer to query first Trino SQL in under 10 minutes",
+      "steps": [
+        "Follow README from clone to query without insider knowledge",
+        "Time the path",
+        "Fix gaps found",
+        "Add copy-paste example with synthetic ids only"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F039",
+      "category": "functional",
+      "priority": "P2",
+      "description": "OpenAPI published for API when administrative endpoints are added",
+      "steps": [
+        "Enable FastAPI openapi.json at /openapi.json",
+        "Version API prefix /api/v1",
+        "Add authentication scheme to spec when MSS integrated",
+        "Publish to developer portal registry when available"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F040",
+      "category": "functional",
+      "priority": "P2",
+      "description": "Module manifest or service registration posts health URL to medinovai-registry when deployed",
+      "steps": [
+        "Add module-manifest.yaml stub",
+        "Document SERVICE_NAME and PORT for K8s",
+        "Align probes with /health and /ready",
+        "Validate against registry contract"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F041",
+      "category": "performance",
+      "priority": "P3",
+      "description": "Connection pooling sized for Trino workers and PostgreSQL max_connections",
+      "steps": [
+        "Document formula for pool size vs max_connections",
+        "Set Trino postgresql connection pool properties if applicable",
+        "Load test concurrent queries",
+        "Adjust and document"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F042",
+      "category": "functional",
+      "priority": "P2",
+      "description": "CI workflow validates docker compose config and builds API image",
+      "steps": [
+        "Add GitHub Actions or equivalent",
+        "Run docker compose config",
+        "Run docker build .",
+        "Fail on schema SQL syntax error with sqlparse or psql dry run"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F043",
+      "category": "compliance",
+      "priority": "P2",
+      "description": "PHI prohibition verified in logs for API and Trino query logging samples",
+      "steps": [
+        "Review default Trino logging config for query text redaction options",
+        "Ensure API middleware never logs request bodies with clinical fields",
+        "Add lint or test for forbidden log patterns",
+        "Document operator configuration"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F044",
+      "category": "functional",
+      "priority": "P2",
+      "description": "k8s/deployment.yaml stub matches Dockerfile port 8000 and health endpoints",
+      "steps": [
+        "Create k8s/deployment.yaml with imagePullPolicy Never for local",
+        "Set REGISTRY_URL and SERVICE_NAME env",
+        "Configure liveness and readiness probes",
+        "Validate with kubectl apply --dry-run=client"
+      ],
+      "passes": false
+    },
+    {
+      "id": "F045",
+      "category": "functional",
+      "priority": "P2",
+      "description": "Phase E integration contract alignment with medinovai-data-services OMOP endpoints documented",
+      "steps": [
+        "Cross-link data-contracts OMOP or integration YAML in README",
+        "List which operations remain in this repo vs data-services",
+        "Open tracking issue for contract drift",
+        "Obtain platform architect sign-off"
+      ],
+      "passes": false
+    }
+  ]
+}
