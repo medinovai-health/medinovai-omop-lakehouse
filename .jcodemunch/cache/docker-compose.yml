@@ -1,0 +1,67 @@
+# MedinovAI OMOP Lakehouse — local data layer (PostgreSQL + Trino + API)
+# Backup: commit compose to Git; use named volumes; no anonymous volumes.
+name: medinovai-omop-lakehouse
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: omop
+      POSTGRES_PASSWORD: omop_dev_change_me
+      POSTGRES_DB: omop
+    ports:
+      - "25432:5432"
+    volumes:
+      - omop_pg_data:/var/lib/postgresql/data
+      - ./schema/omop_cdm_v54_core.sql:/docker-entrypoint-initdb.d/01-omop_cdm_v54_core.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omop -d omop"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  trino:
+    image: trinodb/trino:453
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "18090:8080"
+    volumes:
+      - ./docker/trino/catalog:/etc/trino/catalog:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/v1/info >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+      start_period: 60s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SERVICE_NAME: medinovai-omop-lakehouse
+      PORT: "8000"
+      REGISTRY_URL: http://medinovai-registry.medinovai:8000
+    ports:
+      - "28000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  omop_pg_data:
